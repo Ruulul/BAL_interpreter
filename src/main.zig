@@ -57,23 +57,15 @@ pub fn Program(comptime T: type) type {
                 switch (instruction.inst) {
                     .inc => current_memory.* +%= change,
                     .dec => current_memory.* -%= change,
-                    .dinc => self.dp +%= if (change == 32) current_memory.* else change,
-                    .ddec => self.dp -%= if (change == 32) current_memory.* else change,
+                    .dinc => self.dp +%= change,
+                    .ddec => self.dp -%= change,
                     .iinc => {
-                        if (change == 32) {
-                            self.ip +%= current_memory.*;
-                            continue;
-                        }
                         if (current_memory.* == 0) {
                             self.ip +%= change;
                             continue;
                         }
                     },
                     .idec => {
-                        if (change == 0) {
-                            self.ip -%= current_memory.*;
-                            continue;
-                        }
                         if (current_memory.* != 0) {
                             self.ip -%= change;
                             continue;

@@ -1,4 +1,7 @@
 This is an implementation of [BAL](https://esolangs.org/wiki/Brainfuck_Assembly_Language) with some extentions:
-  - . with arg 0 exits
-  - [] with arg 0 performs an unconditional relative jump of a number of cells equal the current cell
-  - <> with arg 0 moves a number of cells equal the current cell
+  - ! starts a comment
+Output behaviour:
+  - 0 exits (original PICO-8 implementation behaviour)
+Input behaviour:
+Implementation details:
+  - You have to type 0 instead of 32 when you want to pass 32 to the commands who accept it.
