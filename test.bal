@@ -28,20 +28,38 @@
   ! 48: '0'
 
 > ! scratch cell
-  [30       ! . entry point
-  [0        ! . token loop
-  -22 [25   ! . space
-  -10 [     ! . *
+  [26       ! go to entry point
+  -22 [25   ! space
+  -10 [27   ! *
   -1  [     ! . +
   -3  [     ! . -
   -1  [     ! . /
   -1        ! otherwise, assume it is a digit
   < [5 - > +10 < ]5 ! sum acc x10
   > [5 - < + > ]5   ! move total to acc
-  [3        ! . go to repeat
+  [3        ! exit
       ! space handling
-  > [       ! . go to next cell and repeat
-  , -10 ]0  ! . jump back if not nl
+  >
+    ]27 ! return to start
+    [0  ! exit
+    ]2  ! return to start
+      ! * (A|B|0*)->(AxB|0*)
+    <3
+    ! mul loop; assumes A > 0 
+      >
+      [7 - > + > + <2 ]7 ! (A|0*|B|B)
+      >2
+      [5 - <2 + >2 ]5 ! (A|B|B|0*)
+      <3 - 
+    ]18
+    > - ] 
+    >
+    - <2 + >2 ]4 < 
+      ]31 ! return to start
+      [   ! . exit point
+      ]2  ! return to start
+  ,         ! entry point
+  -10 ]3  ! . jump back if not nl
 
 . 
 ! Data delimiter
