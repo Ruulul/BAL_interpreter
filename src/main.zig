@@ -118,13 +118,19 @@ pub fn main() !void {
     const writer = std.io.getStdOut().writer();
     const reader = std.io.getStdIn().reader();
 
-    if (args.len == 1) return enterInterativeMode(allocator, reader, writer);
     const Verb = enum { run, compile };
-    const verb = std.meta.stringToEnum(Verb, args[1]);
+    const verb = std.meta.stringToEnum(Verb, if (args.len > 1) args[1] else "");
     try if (verb) |v| switch (v) {
         .run => runProgram(allocator, args[2], reader, writer),
         .compile => compileProgram(u8, allocator, args[2], args[3]),
-    } else writer.writeAll("Unrecognized command\n");
+    } else writer.writeAll(
+        \\
+        \\Unrecognized command.
+        \\Available commands:
+        \\  bal compile [input] [output]
+        \\  bal run [input]
+        \\
+    );
 }
 
 fn enterInterativeMode(allocator: std.mem.Allocator, in: anytype, out: anytype) !void {
