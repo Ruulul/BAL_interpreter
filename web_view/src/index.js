@@ -205,7 +205,7 @@ class BalMemory extends Tonic {
       if (this.state.ip < 0) this.state.ip = ((this.state.ip % this.state.memory.length) + this.state.memory.length) % this.state.memory.length
     }
     function input () {
-      if (this.state.input.length === 0) this.state.input = [...Array(...prompt('Insert input')), '\n']
+      if (this.state.input.length === 0) this.state.input = [...Array(...prompt('Insert input')), '\n'] // eslint-disable-line no-undef
       this.state.memory[this.state.dp] = this.state.input.shift().charCodeAt(0)
     }
     function output () {
