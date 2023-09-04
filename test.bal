@@ -15,16 +15,14 @@
 ! and when hit an operator, perform it and place back on stack
 ! on the end of it, print the number
 ! (optional) repeat
-! Current state: can sum
+! Current state: calculator with + and - fully implemented
 
 ! comments starting with a dot mark a pendent loop (as in, the number of instructions to jump is still missing)
 ! Important constants to know:
   ! 10: nl
   ! 32: ' '
-  ! 42: '*'
   ! 43: '+'
-  ! 46: '-'
-  ! 47: '/'
+  ! 45: '-'
   ! 48: '0'
 
 > ! scratch cell
@@ -32,8 +30,8 @@
   -10 [24 ! jump to nl
   -22 [23 ! jump to space
   -11 [22 ! jump to +
-  -4  [21 ! jump to -
-  -1      ! digit
+  -2  [21 ! jump to -
+  -3      ! digit
     < [5 - > +10 < ]5
     > [5 - < + > ]5
     , ]24 ! jump to start
