@@ -144,7 +144,7 @@ class BalMemory extends Tonic {
     }
     function input () {
       console.log('input right before shift:', this.state.input)
-      this.state.memory[this.state.dp] = this.state.input.shift()
+      this.state.memory[this.state.dp] = this.state.input.shift().charCodeAt(0)
     }
     function output () {
       this.parentElement.querySelector('[data-contains=output]').textContent += String.fromCharCode(this.state.memory[this.state.dp])
