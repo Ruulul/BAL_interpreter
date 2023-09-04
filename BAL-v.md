@@ -1,3 +1,5 @@
+[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
+
 This is an implementation of [BAL](https://esolangs.org/wiki/Brainfuck_Assembly_Language) with some extentions:
   - ! starts a comment
   - " or ' starts a string, and it must end in the same line and the same character delimits it
