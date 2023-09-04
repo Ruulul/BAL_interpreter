@@ -255,7 +255,7 @@ class BalMemory extends Tonic {
       box-border
       float-left
       pt-2
-      w-[6vw] h-[6vw]
+      w-[6vw] h-12
       text-2xl
       text-center
       ${
