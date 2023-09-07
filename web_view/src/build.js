@@ -385,6 +385,7 @@ exports.default = _default;
 "use strict";
 
 var _tonic = require("@socketsupply/tonic");
+const buttonStyle = 'p-2 text-xl hover:bg-slate-200 transition w-fit rounded shadow-lg';
 class BalProgram extends _tonic.Tonic {
   constructor() {
     super();
@@ -392,6 +393,7 @@ class BalProgram extends _tonic.Tonic {
     this.state.program = undefined;
     this.state.input = '';
     this.state.output = '';
+    this.state.memoryLength = 256;
   }
 
   /**
@@ -406,7 +408,8 @@ class BalProgram extends _tonic.Tonic {
     const handlers = {
       'input-file': handleFile,
       'change-delay': handleDelay,
-      'change-input': handleInput
+      'change-input': handleInput,
+      'change-memory': handleMemory
     };
     handlers[event]?.call(this);
     function handleDelay() {
@@ -421,6 +424,10 @@ class BalProgram extends _tonic.Tonic {
     }
     function handleInput() {
       this.state.input = e.target.value + '\n';
+      this.reRender();
+    }
+    function handleMemory() {
+      this.state.memoryLength = parseInt(e.target.value);
       this.reRender();
     }
   }
@@ -451,18 +458,18 @@ class BalProgram extends _tonic.Tonic {
     let restartButton;
     if (this.state.program) {
       restartButton = this.html`
-      <button data-event=reload-program class="hover:bg-slate-200 w-fit p-3 flex">Restart execution</button>
+      <button data-event=reload-program class="${buttonStyle}">Restart execution</button>
     `;
     }
     return this.html`
-      <div class=grid>
-      <label class="grid p-3 gap-2">
-        Insert your compiled BAL program here
-        <input type=file data-event=input-file>
-      </label>
-      ${restartButton}
+      <div class="grid m-auto p-2">
+        <label class="${buttonStyle}">
+          Insert your compiled BAL program here
+          <input class=hidden type=file data-event=input-file>
+        </label>
+        ${restartButton}
       </div>
-      <label class="flex gap-2">
+      <label class="flex gap-2 p-2">
         Delay: <output data-contains=delay>${this.state.delay.toString()}</output> 
         <input data-event=change-delay type=range 
         min=0 
@@ -470,10 +477,11 @@ class BalProgram extends _tonic.Tonic {
         step=10
         value=${this.state.delay.toString()}> ms
       </label>
-      <label>
-        <div>
+      <label class="flex p-2">
+          Memory Length: <input value="${this.state.memoryLength.toString()}" type=number data-event=change-memory class="border-solid border-b-2 border-yellow-500 rounded w-4">
+      </label>
+      <label class="p-2">
           Input: <input value="${this.state.input}" data-event=change-input class="border-solid border-b-2 border-yellow-500 rounded w-1/2">
-        </div>
       </label>
       <label class="whitespace-pre-wrap m-3">
         Output:
@@ -483,6 +491,7 @@ class BalProgram extends _tonic.Tonic {
       id="${this.id}-memory" 
       input="${this.state.input}"
       handle-output="${this.handleBalOutput.bind(this)}"
+      memory-length="${this.state.memoryLength}"
       delay="${this.state.delay}"></bal-memory>
     `;
   }
@@ -496,10 +505,10 @@ class BalMemory extends _tonic.Tonic {
   });
   constructor() {
     super();
-    this.state.memory = this.state.memory ?? new Uint8Array(this.props.memoryLength || 256);
     this.state.dp = this.state.dp ?? 0;
     this.state.ip = this.state.ip ?? 0;
     this.state.renderMode = this.state.renderMode ?? this.RENDER_MODE.data;
+    console.log(this.props, this.state);
   }
   click(e) {
     const el = _tonic.Tonic.match(e.target, '[data-event]');
@@ -521,8 +530,14 @@ class BalMemory extends _tonic.Tonic {
       this.reRender();
     }
   }
-  connected() {
+  willConnect() {
+    this.state.memory = this.state.memory ?? new Uint8Array(this.props.memoryLength);
+    if (this.state.memory.length !== this.props.memoryLength) {
+      this.state.memory = new Uint8Array(this.props.memoryLength);
+    }
     this.state.input = Array(...(this.props.input || ''));
+  }
+  connected() {
     if (this.state.running) this.startRunCycle();
   }
   disconnected() {
@@ -530,15 +545,18 @@ class BalMemory extends _tonic.Tonic {
   }
   loadProgram(program) {
     this.state.memory.fill(0);
-    new Uint8Array(program).forEach((cell, index) => this.state.memory[index] = cell);
+    new Uint8Array(program.slice(0, this.state.memory.length)).forEach((cell, index) => this.state.memory[index] = cell);
     this.state.dp = 0;
     this.state.ip = 0;
     this.reRender();
   }
   startRunCycle() {
     const instructions = [increment, decrement, goForward, goBack, jumpForward, jumpBack, input, output];
+    const memLength = this.state.memory.length;
     this.state.runCycleId = setInterval(cycle.bind(this), this.props.delay || 10);
     function cycle() {
+      if (this.state.dp >= memLength || this.state.dp < 0) this.state.dp = (this.state.dp % memLength + memLength) % memLength;
+      if (this.state.ip >= memLength || this.state.ip < 0) this.state.ip = (this.state.ip % memLength + memLength) % memLength;
       const instruction = this.state.memory[this.state.ip];
       const op = instruction >> 5;
       const arg = instruction & 0b00011111;
@@ -557,19 +575,15 @@ class BalMemory extends _tonic.Tonic {
     }
     function goForward(x) {
       this.state.dp += x + 1;
-      if (this.state.dp >= this.state.memory.length) this.state.dp = (this.state.dp % this.state.memory.length + this.state.memory.length) % this.state.memory.length;
     }
     function goBack(x) {
       this.state.dp -= x + 1;
-      if (this.state.dp < 0) this.state.dp = (this.state.dp % this.state.memory.length + this.state.memory.length) % this.state.memory.length;
     }
     function jumpForward(x) {
       if (this.state.memory[this.state.dp] === 0) this.state.ip += x;
-      if (this.state.ip >= this.state.memory.length) this.state.ip = (this.state.ip % this.state.memory.length + this.state.memory.length) % this.state.memory.length;
     }
     function jumpBack(x) {
       if (this.state.memory[this.state.dp] !== 0) this.state.ip -= x + 2;
-      if (this.state.ip < 0) this.state.ip = (this.state.ip % this.state.memory.length + this.state.memory.length) % this.state.memory.length;
     }
     function input() {
       if (this.state.input.length === 0) this.state.input = [...Array(...prompt('Insert input')), '\n']; // eslint-disable-line no-undef
@@ -581,9 +595,7 @@ class BalMemory extends _tonic.Tonic {
   }
   render() {
     return this.html`
-      <button class="
-        p-2 text-xl hover:bg-slate-200
-      " data-event=toggle-run>${this.state.running ? 'Stop' : 'Start'}</button>
+      <button class="${buttonStyle}" data-event=toggle-run>${this.state.running ? 'Stop' : 'Start'}</button>
       <label class="grid ml-3"> render mode: 
         <select class=w-1/3 data-event=change-render-mode>
           ${Object.keys(this.RENDER_MODE).map(renderMode => this.html`
@@ -591,7 +603,7 @@ class BalMemory extends _tonic.Tonic {
           `)}
         </select>
       </label>
-      ${[...this.state.memory].map(this.renderCell, this)}
+      ${this.state.memory && [...this.state.memory].map(this.renderCell, this) || 'No memory'}
     `;
   }
   renderCell(cell, i) {
