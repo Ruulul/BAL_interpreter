@@ -478,7 +478,7 @@ class BalProgram extends _tonic.Tonic {
         value=${this.state.delay.toString()}> ms
       </label>
       <label class="flex p-2">
-          Memory Length: <input value="${this.state.memoryLength.toString()}" type=number data-event=change-memory class="border-solid border-b-2 border-yellow-500 rounded w-4">
+          Memory Length: <input value="${this.state.memoryLength.toString()}" type=number data-event=change-memory class="border-solid border-b-2 border-yellow-500 rounded w-fit">
       </label>
       <label class="p-2">
           Input: <input value="${this.state.input}" data-event=change-input class="border-solid border-b-2 border-yellow-500 rounded w-1/2">
@@ -503,6 +503,7 @@ class BalMemory extends _tonic.Tonic {
     code: 'code',
     text: 'text'
   });
+  OPS = '+-><[],.';
   constructor() {
     super();
     this.state.dp = this.state.dp ?? 0;
@@ -517,6 +518,26 @@ class BalMemory extends _tonic.Tonic {
     if (event === 'toggle-run') {
       this.state.running = !this.state.running;
       if (this.state.running) this.startRunCycle();else clearInterval(this.state.runCycleId);
+      this.reRender();
+    }
+    if (event === 'edit-cell') {
+      if (this.state.running) {
+        this.state.running = false;
+        clearInterval(this.state.runCycleId);
+      }
+      const index = el.dataset.index;
+      const new_value = prompt(`Insert the new value (based on the render mode: ${this.state.renderMode})`);
+      switch (this.state.renderMode) {
+        case this.RENDER_MODE.code:
+          this.state.memory[index] = (this.OPS.indexOf(new_value[0]) << 5) + (parseInt(new_value.slice(1)) & 0b11111);
+          break;
+        case this.RENDER_MODE.data:
+          this.state.memory[index] = parseInt(new_value);
+          break;
+        case this.RENDER_MODE.text:
+          this.state.memory[index] = new_value.charCodeAt(0);
+          break;
+      }
       this.reRender();
     }
   }
@@ -609,7 +630,6 @@ class BalMemory extends _tonic.Tonic {
   renderCell(cell, i) {
     const isUnderDP = this.state.dp === i;
     const isUnderIP = this.state.ip === i;
-    const ops = '+-><[],.';
     const op = cell >> 5;
     const args = cell & 0b00011111;
     let cellRendering;
@@ -618,12 +638,14 @@ class BalMemory extends _tonic.Tonic {
         cellRendering = cell;
         break;
       case this.RENDER_MODE.code:
-        if (op <= 5) cellRendering = ops[op] + (args + 1);else cellRendering = ops[op] + args;
+        if (op <= 5) cellRendering = this.OPS[op] + (args + 1);else cellRendering = this.OPS[op] + args;
         break;
       case this.RENDER_MODE.text:
         cellRendering = String.fromCharCode(cell);
     }
     return this.html`<div
+    data-event=edit-cell
+    data-index=${i.toString()}
     class="
       box-border
       float-left
