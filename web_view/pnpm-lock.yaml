@@ -12,6 +12,12 @@ devDependencies:
   budo:
     specifier: ^11.8.4
     version: 11.8.4
+  coffeeify:
+    specifier: ^3.0.1
+    version: 3.0.1(coffeescript@2.7.0)
+  coffeescript:
+    specifier: ^2.7.0
+    version: 2.7.0
   esmify:
     specifier: ^2.1.1
     version: 2.1.1
@@ -815,6 +821,22 @@ packages:
     dependencies:
       inherits: 2.0.4
       safe-buffer: 5.2.1
+    dev: true
+
+  /coffeeify@3.0.1(coffeescript@2.7.0):
+    resolution: {integrity: sha512-Qjnr7UX6ldK1PHV7wCnv7AuCd4q19KTUtwJnu/6JRJB4rfm12zvcXtKdacUoePOKr1I4ka/ydKiwWpNAdsQb0g==}
+    peerDependencies:
+      coffeescript: '>1.9.2 <3'
+    dependencies:
+      coffeescript: 2.7.0
+      convert-source-map: 1.9.0
+      through2: 2.0.5
+    dev: true
+
+  /coffeescript@2.7.0:
+    resolution: {integrity: sha512-hzWp6TUE2d/jCcN67LrW1eh5b/rSDKQK6oD6VMLlggYVUUFexgTH9z3dNYihzX4RMhze5FTUsUmOXViJKFQR/A==}
+    engines: {node: '>=6'}
+    hasBin: true
     dev: true
 
   /color-convert@1.9.3:
