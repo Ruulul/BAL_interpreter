@@ -382,28 +382,38 @@ var _default = Tonic;
 exports.default = _default;
 
 },{}],2:[function(require,module,exports){
-"use strict";
+var Tonic;
 
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.buttonStyle = void 0;
-exports.capitalize = capitalize;
-var buttonStyle = 'p-2 text-xl hover:bg-slate-200 transition w-fit rounded shadow-lg';
-exports.buttonStyle = buttonStyle;
-function capitalize(string) {
+({Tonic} = require('@socketsupply/tonic'));
+
+exports.buttonStyle = 'p-2 text-xl hover:bg-slate-200 transition w-fit rounded shadow-lg';
+
+exports.capitalize = function(string) {
   return [string[0].toUpperCase(), ...string.slice(1)].join('');
-}
+};
 
-},{}],3:[function(require,module,exports){
-var BalMemory, Tonic, buttonStyle, capitalize,
+exports.processEvent = (fn, dataField = 'event') => {
+  return function(e) {
+    var el, event;
+    el = Tonic.match(e.target, `[data-${dataField}]`);
+    if (el == null) {
+      return;
+    }
+    event = el.dataset[dataField];
+    return fn.call(this, event, el);
+  };
+};
+
+
+},{"@socketsupply/tonic":1}],3:[function(require,module,exports){
+var BalMemory, Tonic, exports, processEvent,
   modulo = function(a, b) { return (+a % (b = +b) + b) % b; };
 
 ({Tonic} = require('@socketsupply/tonic'));
 
-({buttonStyle, capitalize} = require('./.env.js'));
+({processEvent} = require('./.env.coffee'));
 
-BalMemory = (function() {
+module.exports = exports = BalMemory = (function() {
   class BalMemory extends Tonic {
     constructor() {
       var base, base1, base2;
@@ -428,47 +438,9 @@ BalMemory = (function() {
       }
     }
 
-    click(e) {
-      var el, event, index, new_value;
-      el = Tonic.match(e.target, '[data-event]');
-      if (el == null) {
-        return;
-      }
-      event = el.dataset.event;
-      switch (event) {
-        case 'edit-cell':
-          if (this.state.running) {
-            this.state.running = false;
-            clearInterval(this.state.runCycleId);
-          }
-          index = el.dataset.index;
-          new_value = prompt(`Insert the new value (based on the render mode: ${this.state.renderMode})`);
-          switch (this.state.renderMode) {
-            case RENDER_MODE.code:
-              this.state.memory[index] = this.OPS.indexOf(new_value[0] << 5) + ((parseInt(new_value.slice(1))) & 0b11111);
-              break;
-            case RENDER_MODE.data:
-              this.state.memory[index] = parseInt(new_value);
-              break;
-            case RENDER_MODE.text:
-              this.state.memory[index] = new_value.charCodeAt(0);
-          }
-          return this.reRender();
-      }
-    }
-
-    change(e) {
-      var el, event;
-      el = Tonic.match(e.target, '[data-event]');
-      if (el == null) {
-        return;
-      }
-      event = el.dataset.event;
-      console.log(event);
-      if (event === 'change-render-mode') {
-        this.state.renderMode = el.value;
-        return this.reRender();
-      }
+    changeRenderMode(newRenderMode) {
+      this.state.renderMode = newRenderMode;
+      return this.reRender();
     }
 
     willConnect() {
@@ -559,29 +531,15 @@ BalMemory = (function() {
     }
 
     render() {
-      var cell, i, renderMode;
-      return this.html`<label class="grid ml-3"> render mode: 
-  <select class=w-1/3 data-event=change-render-mode>
-    ${(function() {
-        var results;
-        results = [];
-        for (renderMode in BalMemory.RENDER_MODE) {
-          results.push(this.html`<option value="${renderMode}" ${renderMode === this.state.renderMode ? 'selected' : void 0}>
-  ${capitalize(renderMode)}
-</option>`);
-        }
-        return results;
-      }).call(this)}
-  </select>
-</label>
-${(function() {
+      var cell, i;
+      return this.html`${(function() {
         var j, len, ref, results;
         if (this.state.memory != null) {
           ref = this.state.memory;
           results = [];
           for (i = j = 0, len = ref.length; j < len; i = ++j) {
             cell = ref[i];
-            results.push(this.renderCell.call(this, cell, i));
+            results.push(this.renderCell(cell, i));
           }
           return results;
         } else {
@@ -591,23 +549,24 @@ ${(function() {
     }
 
     renderCell(cell, i) {
-      var args, cellRendering, isUnderDP, isUnderIP, op;
+      var OPS, RENDER_MODE, args, cellRendering, isUnderDP, isUnderIP, op;
+      ({RENDER_MODE, OPS} = BalMemory);
       isUnderDP = this.state.dp === i;
       isUnderIP = this.state.ip === i;
       op = cell >> 5;
       args = cell & 0b00011111;
       cellRendering = (function() {
         switch (this.state.renderMode) {
-          case BalMemory.RENDER_MODE.data:
+          case RENDER_MODE.data:
             return cell;
-          case BalMemory.RENDER_MODE.code:
+          case RENDER_MODE.code:
             if (op <= 5) {
-              return this.OPS[op] + (args + 1);
+              return OPS[op] + (args + 1);
             } else {
-              return this.OPS[op] + args;
+              return OPS[op] + args;
             }
             break;
-          case BalMemory.RENDER_MODE.text:
+          case RENDER_MODE.text:
             return String.fromCharCode(cell);
         }
       }).call(this);
@@ -639,6 +598,31 @@ ${(function() {
 
   BalMemory.OPS = '+-><[],.';
 
+  BalMemory.prototype.click = processEvent(function(event, el) {
+    var RENDER_MODE, index, new_value;
+    switch (event) {
+      case 'edit-cell':
+        if (this.state.running) {
+          this.state.running = false;
+          clearInterval(this.state.runCycleId);
+        }
+        ({RENDER_MODE} = BalMemory);
+        index = el.dataset.index;
+        new_value = prompt(`Insert the new value (based on the render mode: ${this.state.renderMode})`);
+        switch (this.state.renderMode) {
+          case RENDER_MODE.code:
+            this.state.memory[index] = this.OPS.indexOf(new_value[0] << 5) + ((parseInt(new_value.slice(1))) & 0b11111);
+            break;
+          case RENDER_MODE.data:
+            this.state.memory[index] = parseInt(new_value);
+            break;
+          case RENDER_MODE.text:
+            this.state.memory[index] = new_value.charCodeAt(0);
+        }
+        return this.reRender();
+    }
+  });
+
   return BalMemory;
 
 }).call(this);
@@ -646,70 +630,136 @@ ${(function() {
 Tonic.add(BalMemory);
 
 
-},{"./.env.js":2,"@socketsupply/tonic":1}],4:[function(require,module,exports){
-var BalProgram, Tonic, buttonStyle;
+},{"./.env.coffee":2,"@socketsupply/tonic":1}],4:[function(require,module,exports){
+var BalProgram, RENDER_MODE, Tonic, buttonStyle, capitalize, processEvent;
 
 ({Tonic} = require('@socketsupply/tonic'));
 
-({buttonStyle} = require('./.env.js'));
+({RENDER_MODE} = require('./BalMemory.coffee'));
 
-BalProgram = class BalProgram extends Tonic {
-  constructor() {
-    super();
-    this.state = {
-      delay: 110,
-      program: void 0,
-      input: '',
-      output: '',
-      memoryLength: 256,
-      running: 'Start'
-    };
-  }
+({buttonStyle, capitalize, processEvent} = require('./.env.coffee'));
 
-  change(e) {
-    var el, event;
-    el = Tonic.match(e.target, '[data-event]');
-    if (el == null) {
-      return;
+BalProgram = (function() {
+  class BalProgram extends Tonic {
+    constructor() {
+      super();
+      this.state = {
+        delay: 110,
+        program: void 0,
+        input: '',
+        output: '',
+        memoryLength: 256,
+        running: 'Start'
+      };
     }
-    event = el.dataset.event;
+
+    reloadProgram() {
+      this.querySelector('bal-memory').loadProgram(this.state.program);
+      this.state.output = '';
+      return this.reRender();
+    }
+
+    handleBalOutput(output) {
+      this.state.output += output;
+      return this.querySelector('output[data-contains=output]').textContent += output;
+    }
+
+    render() {
+      var restartButton;
+      if (this.state.program != null) {
+        restartButton = this.html`<button data-event=reload-program class='${buttonStyle}'>Restart execution</button>`;
+      }
+      return this.html`<div class="grid m-auto p-2">
+  <label class="${buttonStyle}">
+    Insert your compiled BAL program here
+    <input class=hidden type=file data-event=input-file>
+  </label>
+  ${restartButton}
+</div>
+${this.renderDelayDial()}
+<label class="flex p-2">
+    Memory Length: <input value="${this.state.memoryLength.toString()}" type=number data-event=change-memory class="border-solid border-b-2 border-yellow-500 rounded w-fit">
+</label>
+${this.renderIO()}
+<button class="${buttonStyle}" data-event="toggle-run">${this.state.running}</button>
+${this.renderRenderModeSelect()}
+<bal-memory 
+id="${this.id}-memory" 
+input="${this.state.input}"
+handle-output="${this.handleBalOutput.bind(this)}"
+memory-length="${this.state.memoryLength}"
+delay="${this.state.delay}"></bal-memory>`;
+    }
+
+    renderRenderModeSelect() {
+      var balMemory, renderMode;
+      balMemory = this.querySelector('bal-memory');
+      return this.html`<label class="grid ml-3"> render mode: 
+  <select class=w-1/3 data-event=change-render-mode>
+    ${(function() {
+        var results;
+        results = [];
+        for (renderMode in RENDER_MODE) {
+          results.push(this.html`<option value="${renderMode}" ${renderMode === (balMemory != null ? balMemory.state.renderMode : void 0) ? 'selected' : void 0}>
+  ${capitalize(renderMode)}
+</option>`);
+        }
+        return results;
+      }).call(this)}
+  </select>
+</label>`;
+    }
+
+    renderDelayDial() {
+      return this.html`<label class="flex gap-2 p-2">
+  Delay: <output data-contains=delay>${this.state.delay.toString()}</output> 
+  <input data-event=change-delay type=range 
+  min=0 
+  max=500 
+  step=10
+  value=${this.state.delay.toString()}> ms
+</label>`;
+    }
+
+    renderIO() {
+      return this.html`<label class="p-2">
+    Input: <input value="${this.state.input}" data-event=change-input class="border-solid border-b-2 border-yellow-500 rounded w-1/2">
+</label>
+<label class="whitespace-pre-wrap m-3">
+  Output:
+  <output data-contains=output id=${this.id}-output>${this.state.output}</output>
+</label>`;
+    }
+
+  };
+
+  BalProgram.prototype.change = processEvent(function(event, el) {
     switch (event) {
       case 'input-file':
-        return e.target.files[0].arrayBuffer().then((program) => {
+        return el.files[0].arrayBuffer().then((program) => {
           this.state.program = program;
           return this.reloadProgram();
         });
       case 'change-delay':
-        this.state.delay = e.target.value;
+        this.state.delay = el.value;
         return this.reRender();
       case 'change-input':
-        this.state.input = e.target.value + '\n';
+        this.state.input = el.value + '\n';
         return this.reRender();
       case 'change-memory':
-        this.state.memoryLength = parseInt(e.target.value);
+        this.state.memoryLength = parseInt(el.value);
         return this.reRender();
     }
-  }
+  });
 
-  input(e) {
-    var el, event;
-    el = Tonic.match(e.target, '[data-event]');
-    if (el == null) {
-      return;
-    }
-    event = el.dataset.event;
+  BalProgram.prototype.input = processEvent(function(event, el) {
     if (event === 'change-delay') {
-      return this.querySelector('output[data-contains=delay]').textContent = e.target.value;
+      return this.querySelector('output[data-contains=delay]').textContent = el.value;
     }
-  }
+  });
 
-  click(e) {
-    var el, event, memory;
-    el = Tonic.match(e.target, '[data-event]');
-    if (el == null) {
-      return;
-    }
-    event = el.dataset.event;
+  BalProgram.prototype.click = processEvent(function(event) {
+    var memory;
     switch (event) {
       case 'reload-program':
         return this.reloadProgram();
@@ -719,64 +769,16 @@ BalProgram = class BalProgram extends Tonic {
         this.state.running = memory.state.running === true ? 'Stop' : 'Start';
         return this.reRender();
     }
-  }
+  });
 
-  reloadProgram() {
-    this.querySelector('bal-memory').loadProgram(this.state.program);
-    this.state.output = '';
-    return this.reRender();
-  }
+  return BalProgram;
 
-  handleBalOutput(output) {
-    this.state.output += output;
-    return this.querySelector('output[data-contains=output]').textContent += output;
-  }
-
-  render() {
-    var restartButton;
-    if (this.state.program != null) {
-      restartButton = this.html`<button data-event=reload-program class='${buttonStyle}'>Restart execution</button>`;
-    }
-    return this.html`<div class="grid m-auto p-2">
-  <label class="${buttonStyle}">
-    Insert your compiled BAL program here
-    <input class=hidden type=file data-event=input-file>
-  </label>
-  ${restartButton}
-</div>
-<label class="flex gap-2 p-2">
-  Delay: <output data-contains=delay>${this.state.delay.toString()}</output> 
-  <input data-event=change-delay type=range 
-  min=0 
-  max=500 
-  step=10
-  value=${this.state.delay.toString()}> ms
-</label>
-<label class="flex p-2">
-    Memory Length: <input value="${this.state.memoryLength.toString()}" type=number data-event=change-memory class="border-solid border-b-2 border-yellow-500 rounded w-fit">
-</label>
-<label class="p-2">
-    Input: <input value="${this.state.input}" data-event=change-input class="border-solid border-b-2 border-yellow-500 rounded w-1/2">
-</label>
-<label class="whitespace-pre-wrap m-3">
-  Output:
-  <output data-contains=output id=${this.id}-output>${this.state.output}</output>
-</label>
-<button class="${buttonStyle}" data-event="toggle-run">${this.state.running}</button>
-<bal-memory 
-id="${this.id}-memory" 
-input="${this.state.input}"
-handle-output="${this.handleBalOutput.bind(this)}"
-memory-length="${this.state.memoryLength}"
-delay="${this.state.delay}"></bal-memory>`;
-  }
-
-};
+}).call(this);
 
 Tonic.add(BalProgram);
 
 
-},{"./.env.js":2,"@socketsupply/tonic":1}],5:[function(require,module,exports){
+},{"./.env.coffee":2,"./BalMemory.coffee":3,"@socketsupply/tonic":1}],5:[function(require,module,exports){
 "use strict";
 
 require("./BalProgram.coffee");
