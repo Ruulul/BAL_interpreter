@@ -1,5 +1,6 @@
 { Tonic } = require '@socketsupply/tonic'
-{ buttonStyle } = require './.env.js'
+{ RENDER_MODE } = require './BalMemory.coffee'
+{ buttonStyle, capitalize, processEvent } = require './.env.coffee'
 
 class BalProgram extends Tonic
   constructor: ->
@@ -11,41 +12,33 @@ class BalProgram extends Tonic
       output: ''
       memoryLength: 256
       running: 'Start'
-  change: (e) ->
-    el = Tonic.match e.target, '[data-event]'
-    return unless el?
-    event = el.dataset.event
+  change: processEvent (event, el) ->
     switch event
       when 'input-file'
-        e.target.files[0].arrayBuffer()
+        el.files[0].arrayBuffer()
         .then (program) =>
           @state.program = program
           @reloadProgram()
       when 'change-delay'
-        @state.delay = e.target.value
+        @state.delay = el.value
         @reRender()
       when 'change-input'
-        @state.input = e.target.value + '\n'
+        @state.input = el.value + '\n'
         @reRender()
       when 'change-memory'
-        @state.memoryLength = parseInt e.target.value
+        @state.memoryLength = parseInt el.value
         @reRender()
   
-  input: (e) ->
-    el = Tonic.match e.target, '[data-event]'
-    return unless el?
-    event = el.dataset.event
-    @querySelector('output[data-contains=delay]').textContent = e.target.value if event == 'change-delay'
+  input: processEvent (event, el) ->
+    @querySelector 'output[data-contains=delay]'
+    .textContent = el.value if event == 'change-delay'
 
-  click: (e) ->
-    el = Tonic.match e.target, '[data-event]'
-    return unless el?
-    event = el.dataset.event
+  click: processEvent (event) ->
     switch event
       when 'reload-program'
         @reloadProgram()
       when 'toggle-run'
-        memory = @querySelector('bal-memory') 
+        memory = @querySelector 'bal-memory' 
         memory.toggleRun()
         @state.running = if memory.state.running is on then 'Stop' else 'Start'
         @reRender()
@@ -61,8 +54,8 @@ class BalProgram extends Tonic
     @querySelector('output[data-contains=output]').textContent += output
 
   render: -> 
-    restartButton = this.html"<button data-event=reload-program class='#{buttonStyle}'>Restart execution</button>" if @state.program?
-    return this.html"""
+    restartButton = @html"<button data-event=reload-program class='#{buttonStyle}'>Restart execution</button>" if @state.program?
+    @html"""
       <div class="grid m-auto p-2">
         <label class="#{buttonStyle}">
           Insert your compiled BAL program here
@@ -70,17 +63,49 @@ class BalProgram extends Tonic
         </label>
         #{restartButton}
       </div>
+      #{@renderDelayDial()}
+      <label class="flex p-2">
+          Memory Length: <input value="#{@state.memoryLength.toString()}" type=number data-event=change-memory class="border-solid border-b-2 border-yellow-500 rounded w-fit">
+      </label>
+      #{@renderIO()}
+      <button class="#{buttonStyle}" data-event="toggle-run">#{@state.running}</button>
+      #{@renderRenderModeSelect()}
+      <bal-memory 
+      id="#{@id}-memory" 
+      input="#{@state.input}"
+      handle-output="#{@handleBalOutput.bind(this)}"
+      memory-length="#{@state.memoryLength}"
+      delay="#{@state.delay}"></bal-memory>
+    """
+
+  renderRenderModeSelect: ->
+    balMemory = @querySelector 'bal-memory'
+    @html"""
+      <label class="grid ml-3"> render mode: 
+        <select class=w-1/3 data-event=change-render-mode>
+          #{(@html"""
+            <option value="#{renderMode}" #{'selected' if renderMode == balMemory?.state.renderMode}>
+              #{capitalize renderMode}
+            </option>
+          """ for renderMode of RENDER_MODE)
+          }
+        </select>
+      </label>
+    """
+  renderDelayDial: ->
+    @html"""
       <label class="flex gap-2 p-2">
-        Delay: <output data-contains=delay>#{this.state.delay.toString()}</output> 
+        Delay: <output data-contains=delay>#{@state.delay.toString()}</output> 
         <input data-event=change-delay type=range 
         min=0 
         max=500 
         step=10
         value=#{@state.delay.toString()}> ms
       </label>
-      <label class="flex p-2">
-          Memory Length: <input value="#{@state.memoryLength.toString()}" type=number data-event=change-memory class="border-solid border-b-2 border-yellow-500 rounded w-fit">
-      </label>
+    """
+
+  renderIO: ->
+    @html"""
       <label class="p-2">
           Input: <input value="#{@state.input}" data-event=change-input class="border-solid border-b-2 border-yellow-500 rounded w-1/2">
       </label>
@@ -88,13 +113,6 @@ class BalProgram extends Tonic
         Output:
         <output data-contains=output id=#{@id}-output>#{@state.output}</output>
       </label>
-      <button class="#{buttonStyle}" data-event="toggle-run">#{@state.running}</button>
-      <bal-memory 
-      id="#{@id}-memory" 
-      input="#{@state.input}"
-      handle-output="#{@handleBalOutput.bind(this)}"
-      memory-length="#{@state.memoryLength}"
-      delay="#{@state.delay}"></bal-memory>
     """
 
 Tonic.add BalProgram

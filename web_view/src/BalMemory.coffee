@@ -1,7 +1,7 @@
 { Tonic } = require '@socketsupply/tonic'
-{ buttonStyle, capitalize } = require './.env.js'
+{ processEvent } = require './.env.coffee'
 
-class BalMemory extends Tonic
+module.exports = exports = class BalMemory extends Tonic
   @RENDER_MODE:
     data: 'data'
     code: 'code'
@@ -16,16 +16,15 @@ class BalMemory extends Tonic
   toggleRun: ->
     @state.running = !@state.running
     if @state.running then @startRunCycle() else clearInterval @state.runCycleId
-  click: (e) ->
-    el = Tonic.match e.target, '[data-event]'
-    return unless el?
-    event = el.dataset.event
+
+  click: processEvent (event, el) ->
     switch event
       when 'edit-cell'
         if @state.running 
           @state.running = off
           clearInterval @state.runCycleId
 
+        {RENDER_MODE} = BalMemory
         index = el.dataset.index
         new_value = prompt "Insert the new value (based on the render mode: #{@state.renderMode})"
         switch @state.renderMode
@@ -37,15 +36,9 @@ class BalMemory extends Tonic
             @state.memory[index] = new_value.charCodeAt(0)
         @reRender()
 
-
-  change: (e) ->
-    el = Tonic.match e.target, '[data-event]'
-    return unless el?
-    event = el.dataset.event
-    console.log event
-    if event == 'change-render-mode'
-      @state.renderMode = el.value
-      @reRender()
+  changeRenderMode: (newRenderMode) ->
+    @state.renderMode = newRenderMode
+    @reRender()
 
   willConnect: -> 
     @state.memory ?= new Uint8Array @props.memoryLength
@@ -98,29 +91,20 @@ class BalMemory extends Tonic
 
   render: ->
     @html"""
-      <label class="grid ml-3"> render mode: 
-        <select class=w-1/3 data-event=change-render-mode>
-          #{(@html"""
-            <option value="#{renderMode}" #{'selected' if renderMode == @state.renderMode}>
-              #{capitalize renderMode}
-            </option>
-          """ for renderMode of BalMemory.RENDER_MODE)
-          }
-        </select>
-      </label>
-      #{if @state.memory? then @renderCell.call @, cell, i for cell, i in @state.memory else 'No memory'}
+      #{if @state.memory? then @renderCell cell, i for cell, i in @state.memory else 'No memory'}
     """
 
   renderCell: (cell, i) ->
+    { RENDER_MODE, OPS } = BalMemory
     isUnderDP = @state.dp == i
     isUnderIP = @state.ip == i
     op = cell >> 5
     args = cell & 0b00011111
     cellRendering = switch @state.renderMode
-      when BalMemory.RENDER_MODE.data then cell
-      when BalMemory.RENDER_MODE.code
-        if op <= 5 then@OPS[op] + (args + 1)  else @OPS[op] + args
-      when BalMemory.RENDER_MODE.text
+      when RENDER_MODE.data then cell
+      when RENDER_MODE.code
+        if op <= 5 then OPS[op] + (args + 1)  else OPS[op] + args
+      when RENDER_MODE.text
         String.fromCharCode cell
 
     @html"""<div
